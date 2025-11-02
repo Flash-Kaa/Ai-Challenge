@@ -15,7 +15,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -25,6 +29,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,9 +42,12 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.flasska.chatai.data.api.yandex.ModelInfo
+import com.flasska.chatai.data.api.yandex.YandexApiService
 import com.flasska.chatai.data.local.PreferencesManager
 import com.flasska.chatai.presentation.design_system.ChatColors
 import com.flasska.chatai.presentation.navigation.Screen
+import org.koin.androidx.compose.get
 
 fun NavController.navigateToSettings() {
     navigate(Screen.Settings)
@@ -55,7 +63,8 @@ fun NavGraphBuilder.settingsScreen(navController: NavController) {
 @Composable
 fun SettingsScreen(
     navController: NavController,
-    preferencesManager: PreferencesManager = org.koin.androidx.compose.get()
+    preferencesManager: PreferencesManager = get(),
+    yandexApiService: YandexApiService = get()
 ) {
     // Загружаем текущие значения
     var apiKey by remember {
@@ -64,8 +73,61 @@ fun SettingsScreen(
     var folderId by remember {
         mutableStateOf(preferencesManager.getFolderId() ?: "")
     }
+    var selectedModel by remember {
+        mutableStateOf(preferencesManager.getModel() ?: "yandexgpt")
+    }
+    var modelExpanded by remember { mutableStateOf(false) }
     var showSuccessMessage by remember { mutableStateOf(false) }
     var showErrorMessage by remember { mutableStateOf<String?>(null) }
+    
+    // Состояние загрузки моделей
+    var availableModels by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    var isLoadingModels by remember { mutableStateOf(false) }
+    var modelsError by remember { mutableStateOf<String?>(null) }
+
+    // Функция для получения читаемого названия модели
+    fun getModelDisplayName(modelId: String): String {
+        return when {
+            modelId.contains("yandexgpt-lite", ignoreCase = true) -> "YandexGPT Lite (быстрая)"
+            modelId.contains("yandexgpt-pro", ignoreCase = true) -> "YandexGPT Pro (профессиональная)"
+            modelId.contains("yandexgpt", ignoreCase = true) -> "YandexGPT (базовая)"
+            else -> modelId
+        }
+    }
+
+    // Загружаем модели при изменении API ключа или folder ID
+    LaunchedEffect(apiKey, folderId) {
+        if (apiKey.isNotBlank() && folderId.isNotBlank() && 
+            apiKey != "YOUR_API_KEY_HERE" && folderId != "YOUR_FOLDER_ID_HERE") {
+            isLoadingModels = true
+            modelsError = null
+            yandexApiService.getModels(apiKey, folderId).fold(
+                onSuccess = { models ->
+                    availableModels = models.map { modelInfo ->
+                        modelInfo.id to getModelDisplayName(modelInfo.id)
+                    }
+                    isLoadingModels = false
+                },
+                onFailure = { error ->
+                    modelsError = error.message
+                    isLoadingModels = false
+                    // В случае ошибки используем дефолтные модели
+                    availableModels = listOf(
+                        "yandexgpt" to "YandexGPT (базовая)",
+                        "yandexgpt-lite" to "YandexGPT Lite (быстрая)",
+                        "yandexgpt-pro" to "YandexGPT Pro (профессиональная)"
+                    )
+                }
+            )
+        } else {
+            // Если ключи не заданы, используем дефолтные модели
+            availableModels = listOf(
+                "yandexgpt" to "YandexGPT (базовая)",
+                "yandexgpt-lite" to "YandexGPT Lite (быстрая)",
+                "yandexgpt-pro" to "YandexGPT Pro (профессиональная)"
+            )
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -198,12 +260,92 @@ fun SettingsScreen(
                 )
             }
 
+            // Выбор модели
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Модель",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = ChatColors.InputText
+                )
+                ExposedDropdownMenuBox(
+                    expanded = modelExpanded && !isLoadingModels && availableModels.isNotEmpty(),
+                    onExpandedChange = { if (!isLoadingModels && availableModels.isNotEmpty()) modelExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = when {
+                            isLoadingModels -> "Загрузка моделей..."
+                            availableModels.isEmpty() -> "Модели не загружены"
+                            else -> availableModels.firstOrNull { it.first == selectedModel }?.second
+                                ?: selectedModel
+                        },
+                        onValueChange = { },
+                        readOnly = true,
+                        enabled = !isLoadingModels && availableModels.isNotEmpty(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        trailingIcon = {
+                            if (isLoadingModels) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = ChatColors.InputPlaceholder
+                                )
+                            } else {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelExpanded)
+                            }
+                        },
+                        placeholder = {
+                            Text(
+                                text = "Выберите модель",
+                                color = ChatColors.InputPlaceholder
+                            )
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = ChatColors.InputBackground,
+                            unfocusedContainerColor = ChatColors.InputBackground,
+                            disabledContainerColor = ChatColors.InputBackground,
+                            focusedTextColor = ChatColors.InputText,
+                            unfocusedTextColor = ChatColors.InputText,
+                            disabledTextColor = ChatColors.InputPlaceholder
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = modelExpanded && !isLoadingModels,
+                        onDismissRequest = { modelExpanded = false }
+                    ) {
+                        availableModels.forEach { (modelKey, modelName) ->
+                            DropdownMenuItem(
+                                text = { Text(text = modelName) },
+                                onClick = {
+                                    selectedModel = modelKey
+                                    modelExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                // Сообщение об ошибке загрузки моделей (если есть, но не критично)
+                if (modelsError != null && availableModels.isNotEmpty()) {
+                    Text(
+                        text = "Используются модели по умолчанию. Ошибка: $modelsError",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ChatColors.InputPlaceholder,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+            }
+
             // Кнопка сохранения
             Button(
                 onClick = {
                     if (apiKey.isNotBlank() && folderId.isNotBlank()) {
                         preferencesManager.setApiKey(apiKey)
                         preferencesManager.setFolderId(folderId)
+                        preferencesManager.setModel(selectedModel)
                         showSuccessMessage = true
                         showErrorMessage = null
                     } else {

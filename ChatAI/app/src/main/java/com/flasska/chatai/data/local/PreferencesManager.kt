@@ -13,6 +13,7 @@ class PreferencesManager(context: Context) {
         private const val PREFS_NAME = "chat_ai_prefs"
         private const val KEY_API_KEY = "yandex_api_key"
         private const val KEY_FOLDER_ID = "yandex_folder_id"
+        private const val KEY_MODEL = "yandex_model"
     }
 
     fun getApiKey(): String? {
@@ -29,6 +30,14 @@ class PreferencesManager(context: Context) {
 
     fun setFolderId(folderId: String) {
         prefs.edit().putString(KEY_FOLDER_ID, folderId).apply()
+    }
+
+    fun getModel(): String? {
+        return prefs.getString(KEY_MODEL, null)
+    }
+
+    fun setModel(model: String) {
+        prefs.edit().putString(KEY_MODEL, model).apply()
     }
 
     fun clearAll() {

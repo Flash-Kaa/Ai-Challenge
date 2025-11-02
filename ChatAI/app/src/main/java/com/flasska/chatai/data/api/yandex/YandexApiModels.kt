@@ -1,5 +1,6 @@
 package com.flasska.chatai.data.api.yandex
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -58,5 +59,23 @@ data class YandexApiError(
 data class ErrorDetails(
     val message: String? = null,
     val code: Int? = null
+)
+
+// OpenAI-compatible models list response
+@Serializable
+data class ModelsListResponse(
+    val data: List<ModelInfo>,
+    @SerialName("object")
+    val objectType: String = "list"
+)
+
+@Serializable
+data class ModelInfo(
+    val id: String,
+    @SerialName("object")
+    val objectType: String = "model",
+    val created: Long? = null,
+    @SerialName("owned_by")
+    val ownedBy: String? = null
 )
 

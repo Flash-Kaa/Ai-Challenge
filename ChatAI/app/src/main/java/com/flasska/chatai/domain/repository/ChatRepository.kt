@@ -74,9 +74,10 @@ class ChatRepositoryImpl(
             )
         }
 
-        // Получаем API ключи из настроек
+        // Получаем API ключи и модель из настроек
         val apiKey = preferencesManager.getApiKey() ?: ""
         val folderId = preferencesManager.getFolderId() ?: ""
+        val model = preferencesManager.getModel()
 
         // Проверяем, что API ключи настроены
         if (apiKey.isBlank() || folderId.isBlank() ||
@@ -90,7 +91,8 @@ class ChatRepositoryImpl(
         val result = yandexApiService.sendMessage(
             messages = apiMessages,
             apiKey = apiKey,
-            folderId = folderId
+            folderId = folderId,
+            model = model
         )
 
         result.fold(
