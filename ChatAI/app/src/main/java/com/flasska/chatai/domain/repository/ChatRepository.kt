@@ -9,10 +9,20 @@ import com.flasska.chatai.data.local.entity.ChatEntity
 import com.flasska.chatai.data.local.mapper.toDomain
 import com.flasska.chatai.data.local.mapper.toEntity
 import com.flasska.chatai.domain.model.Chat
+import com.flasska.chatai.domain.model.ChatPreview
 import com.flasska.chatai.domain.model.Message
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import java.util.UUID
 
@@ -20,9 +30,12 @@ interface ChatRepository {
     fun getChat(id: String): Flow<Chat>
     suspend fun addMessage(chatId: String, message: Message)
     suspend fun createChat(id: String? = null): Chat
-    fun getAllChats(): Flow<List<Chat>>
+    suspend fun deleteChat(chatId: String)
+    suspend fun getAllChats(): Flow<List<Chat>>
+    suspend fun getAllChatPreviews(): Flow<List<ChatPreview>>
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ChatRepositoryImpl(
     private val yandexApiService: YandexApiService,
     private val chatDao: ChatDao,
@@ -41,9 +54,7 @@ class ChatRepositoryImpl(
 
     override suspend fun addMessage(chatId: String, message: Message) {
         // Убеждаемся, что чат существует в БД
-        val chatEntity = chatDao.getChatById(chatId).let { flow ->
-            flow.first()
-        }
+        val chatEntity = chatDao.getChatById(chatId).first()
         if (chatEntity == null) {
             // Если чата нет, создаем его
             chatDao.insertChat(ChatEntity(id = chatId))
@@ -99,15 +110,11 @@ class ChatRepositoryImpl(
     override suspend fun createChat(id: String?): Chat {
         val chatId = id ?: UUID.randomUUID().toString()
         // Проверяем, существует ли уже чат
-        val existingChat = chatDao.getChatById(chatId).let { flow ->
-            flow.first()
-        }
+        val existingChat = chatDao.getChatById(chatId).firstOrNull()
         
         return if (existingChat != null) {
             // Чат уже существует, возвращаем его
-            val messages = messageDao.getMessagesByChatId(chatId).let { flow ->
-                flow.first().map { it.toDomain() }
-            }
+            val messages = messageDao.getMessagesByChatId(chatId).first().map { it.toDomain() }
             existingChat.toDomain(messages)
         } else {
             // Создаем новый чат
@@ -117,7 +124,7 @@ class ChatRepositoryImpl(
         }
     }
 
-    override fun getAllChats(): Flow<List<Chat>> {
+    override suspend fun getAllChats(): Flow<List<Chat>> {
         // Для получения всех чатов с сообщениями нужна более сложная логика
         // Пока возвращаем только чаты без сообщений
         // Можно расширить при необходимости
@@ -126,6 +133,38 @@ class ChatRepositoryImpl(
                 chatEntity.toDomain(emptyList())
             }
         }
+    }
+
+    override suspend fun deleteChat(chatId: String) {
+        // Удаляем все сообщения чата (благодаря CASCADE в БД это произойдет автоматически,
+        // но удалим явно для надежности)
+        messageDao.deleteMessagesByChatId(chatId)
+        // Удаляем сам чат
+        chatDao.deleteChatById(chatId)
+    }
+
+    override suspend fun getAllChatPreviews(): Flow<List<ChatPreview>> {
+        return chatDao.getAllChats()
+            .flatMapLatest { chatEntities ->
+                flow {
+                    val previews = chatEntities.map { chatEntity ->
+                        val lastMessage = messageDao.getLastMessageByChatId(chatEntity.id)
+                        ChatPreview(
+                            id = chatEntity.id,
+                            lastMessage = lastMessage?.text,
+                            lastMessageTimestamp = lastMessage?.timestamp,
+                            createdAt = chatEntity.createdAt,
+                            unreadCount = 0 // Пока не реализовано
+                        )
+                    }
+                    // Сортируем по дате последнего сообщения или создания, если нет сообщений
+                    val sorted = previews.sortedByDescending {
+                        it.lastMessageTimestamp ?: it.createdAt 
+                    }
+                    emit(sorted)
+                }
+            }
+            .flowOn(Dispatchers.IO)
     }
 }
 
