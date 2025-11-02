@@ -5,9 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.flasska.chatai.domain.model.Message
 import com.flasska.chatai.domain.repository.ChatRepository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 class ChatViewModel(
     private val chatId: String,
@@ -18,7 +21,7 @@ class ChatViewModel(
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
     private val _events = MutableSharedFlow<ChatEvent>(extraBufferCapacity = 10)
-    
+
     init {
         // Подписываемся на изменения чата из БД
         viewModelScope.launch(Dispatchers.Default) {
@@ -31,11 +34,11 @@ class ChatViewModel(
                 }
                 .collect { chat ->
                     val lastMessage = chat.messages.lastOrNull()
-                    val isProcessing = lastMessage?.isFromUser == true && 
-                        chat.messages.none { 
-                            !it.isFromUser && it.timestamp > (lastMessage?.timestamp ?: 0) 
-                        }
-                    
+                    val isProcessing = lastMessage?.isFromUser == true &&
+                            chat.messages.none {
+                                !it.isFromUser && it.timestamp > (lastMessage?.timestamp ?: 0)
+                            }
+
                     _uiState.value = _uiState.value.copy(
                         messages = chat.messages,
                         isLoading = false,
@@ -44,7 +47,7 @@ class ChatViewModel(
                     )
                 }
         }
-        
+
         // Создаем чат в БД, если его нет
         viewModelScope.launch(Dispatchers.Default) {
             try {

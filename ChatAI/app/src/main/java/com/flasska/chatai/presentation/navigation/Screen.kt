@@ -9,7 +9,12 @@ sealed interface Screen {
     @Serializable
     data class Chat(
         val id: String? = null,
-    ) : Screen
+    ) : Screen {
+        fun createRoute(id: String?) = if (id == null) "chat" else "chat/$id"
+    }
+
+    @Serializable
+    data object Settings : Screen
 
     companion object {
         val startRoute = Start

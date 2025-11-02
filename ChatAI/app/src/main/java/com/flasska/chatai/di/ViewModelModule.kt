@@ -12,7 +12,7 @@ val viewModelModule = module {
             repository = get()
         )
     }
-    
+
     viewModel { ChatsPanelViewModel(get()) }
 }
 

@@ -5,7 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.flasska.chatai.domain.model.ChatPreview
 import com.flasska.chatai.domain.repository.ChatRepository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 data class ChatsPanelUiState(
@@ -82,7 +85,7 @@ class ChatsPanelViewModel(
         viewModelScope.launch(Dispatchers.Default) {
             try {
                 repository.deleteChat(chatId)
-                
+
                 // Если удаляемый чат был текущим, сбрасываем currentChatId
                 if (_uiState.value.currentChatId == chatId) {
                     _uiState.value = _uiState.value.copy(

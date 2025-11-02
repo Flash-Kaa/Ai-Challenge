@@ -1,8 +1,17 @@
 package com.flasska.chatai.presentation.start
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,14 +51,14 @@ fun StartScreen(navController: NavController) {
                 color = ChatColors.InputText,
                 textAlign = TextAlign.Center
             )
-            
+
             Text(
                 text = "Начните новый диалог с AI-ассистентом",
                 style = MaterialTheme.typography.bodyLarge,
                 color = ChatColors.InputPlaceholder,
                 textAlign = TextAlign.Center
             )
-            
+
             Button(
                 onClick = navController::navigateToChat,
                 modifier = Modifier

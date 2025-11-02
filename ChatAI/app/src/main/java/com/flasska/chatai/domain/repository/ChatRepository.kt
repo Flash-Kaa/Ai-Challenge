@@ -1,8 +1,8 @@
 package com.flasska.chatai.domain.repository
 
-import com.flasska.chatai.data.api.ApiConfig
 import com.flasska.chatai.data.api.yandex.ApiMessage
 import com.flasska.chatai.data.api.yandex.YandexApiService
+import com.flasska.chatai.data.local.PreferencesManager
 import com.flasska.chatai.data.local.dao.ChatDao
 import com.flasska.chatai.data.local.dao.MessageDao
 import com.flasska.chatai.data.local.entity.ChatEntity
@@ -13,9 +13,6 @@ import com.flasska.chatai.domain.model.ChatPreview
 import com.flasska.chatai.domain.model.Message
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -39,7 +36,8 @@ interface ChatRepository {
 class ChatRepositoryImpl(
     private val yandexApiService: YandexApiService,
     private val chatDao: ChatDao,
-    private val messageDao: MessageDao
+    private val messageDao: MessageDao,
+    private val preferencesManager: PreferencesManager
 ) : ChatRepository {
 
     override fun getChat(id: String): Flow<Chat> {
@@ -59,7 +57,7 @@ class ChatRepositoryImpl(
             // Если чата нет, создаем его
             chatDao.insertChat(ChatEntity(id = chatId))
         }
-        
+
         // Сохраняем сообщение пользователя в БД
         messageDao.insertMessage(message.toEntity(chatId))
 
@@ -76,19 +74,23 @@ class ChatRepositoryImpl(
             )
         }
 
+        // Получаем API ключи из настроек
+        val apiKey = preferencesManager.getApiKey() ?: ""
+        val folderId = preferencesManager.getFolderId() ?: ""
+
         // Проверяем, что API ключи настроены
-        if (ApiConfig.YANDEX_API_KEY == "YOUR_API_KEY_HERE" || 
-            ApiConfig.YANDEX_FOLDER_ID == "YOUR_FOLDER_ID_HERE") {
+        if (apiKey.isBlank() || folderId.isBlank() ||
+            apiKey == "YOUR_API_KEY_HERE" || folderId == "YOUR_FOLDER_ID_HERE"
+        ) {
             throw IllegalStateException(
-                "API ключи не настроены. Пожалуйста, добавьте YANDEX_API_KEY и YANDEX_FOLDER_ID в ApiConfig.kt. " +
-                "См. документацию в файле ApiConfig.kt для получения инструкций."
+                "API ключи не настроены. Пожалуйста, перейдите в настройки и добавьте YANDEX_API_KEY и YANDEX_FOLDER_ID."
             )
         }
 
         val result = yandexApiService.sendMessage(
             messages = apiMessages,
-            apiKey = ApiConfig.YANDEX_API_KEY,
-            folderId = ApiConfig.YANDEX_FOLDER_ID
+            apiKey = apiKey,
+            folderId = folderId
         )
 
         result.fold(
@@ -111,7 +113,7 @@ class ChatRepositoryImpl(
         val chatId = id ?: UUID.randomUUID().toString()
         // Проверяем, существует ли уже чат
         val existingChat = chatDao.getChatById(chatId).firstOrNull()
-        
+
         return if (existingChat != null) {
             // Чат уже существует, возвращаем его
             val messages = messageDao.getMessagesByChatId(chatId).first().map { it.toDomain() }
@@ -159,7 +161,7 @@ class ChatRepositoryImpl(
                     }
                     // Сортируем по дате последнего сообщения или создания, если нет сообщений
                     val sorted = previews.sortedByDescending {
-                        it.lastMessageTimestamp ?: it.createdAt 
+                        it.lastMessageTimestamp ?: it.createdAt
                     }
                     emit(sorted)
                 }

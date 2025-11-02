@@ -1,10 +1,12 @@
 package com.flasska.chatai.data.api.yandex
 
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.request.*
-import io.ktor.http.*
-import kotlinx.serialization.json.Json
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 
 interface YandexApiService {
     suspend fun sendMessage(
@@ -53,12 +55,13 @@ class YandexApiServiceImpl(
                         Result.failure(Exception("Ошибка десериализации ответа: ${e.message}. Тело ответа: $responseBody"))
                     }
                 }
+
                 else -> {
                     // Ошибка API
                     try {
                         val errorBody: YandexApiError = httpResponse.body()
-                        val errorMessage = errorBody.error?.message 
-                            ?: errorBody.message 
+                        val errorMessage = errorBody.error?.message
+                            ?: errorBody.message
                             ?: "Неизвестная ошибка API (${httpResponse.status.value})"
                         Result.failure(Exception(errorMessage))
                     } catch (e: Exception) {
@@ -69,13 +72,15 @@ class YandexApiServiceImpl(
                 }
             }
         } catch (e: java.net.UnknownHostException) {
-            Result.failure(Exception(
-                "Не удалось найти адрес '$baseUrl'. " +
-                "Возможные причины:\n" +
-                "1. Сервис YandexGPT не активирован в вашем каталоге\n" +
-                "2. Проверьте настройки интернета\n" +
-                "3. Убедитесь, что используете правильный endpoint"
-            ))
+            Result.failure(
+                Exception(
+                    "Не удалось найти адрес '$baseUrl'. " +
+                            "Возможные причины:\n" +
+                            "1. Сервис YandexGPT не активирован в вашем каталоге\n" +
+                            "2. Проверьте настройки интернета\n" +
+                            "3. Убедитесь, что используете правильный endpoint"
+                )
+            )
         } catch (e: io.ktor.client.network.sockets.ConnectTimeoutException) {
             Result.failure(Exception("Не удалось подключиться к серверу. Проверьте интернет-соединение."))
         } catch (e: io.ktor.client.network.sockets.SocketTimeoutException) {
