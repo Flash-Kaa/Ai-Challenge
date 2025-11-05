@@ -62,17 +62,26 @@ class ChatRepositoryImpl(
         messageDao.insertMessage(message.toEntity(chatId))
 
         // Получаем все сообщения для отправки в API
-        val allMessages = messageDao.getMessagesByChatId(chatId).let { flow ->
-            flow.first().map { it.toDomain() }
-        }
+        val allMessages = messageDao.getMessagesByChatId(chatId)
+            .first()
+            .map { it.toDomain() }
 
-        // Отправляем запрос к Yandex GPT API
-        val apiMessages = allMessages.map { msg ->
+        // Добавляем системный промпт
+        val systemMessage = ApiMessage(
+            role = "system",
+            text = RequestUtils.SYSTEM_MESSAGE,
+        )
+
+        // Конвертируем сообщения из БД в формат API
+        val userApiMessages = allMessages.map { msg ->
             ApiMessage(
                 role = if (msg.isFromUser) "user" else "assistant",
                 text = msg.text
             )
         }
+
+        // Объединяем системный промпт с историей чата
+        val apiMessages = listOf(systemMessage) + userApiMessages
 
         // Получаем API ключи и модель из настроек
         val apiKey = preferencesManager.getApiKey() ?: ""
@@ -153,9 +162,10 @@ class ChatRepositoryImpl(
                 flow {
                     val previews = chatEntities.map { chatEntity ->
                         val lastMessage = messageDao.getLastMessageByChatId(chatEntity.id)
+                        val firstMessage = messageDao.getFirstMessageByChatId(chatEntity.id)
                         ChatPreview(
                             id = chatEntity.id,
-                            lastMessage = lastMessage?.text,
+                            firstMessage = firstMessage?.text,
                             lastMessageTimestamp = lastMessage?.timestamp,
                             createdAt = chatEntity.createdAt,
                             unreadCount = 0 // Пока не реализовано
@@ -171,4 +181,3 @@ class ChatRepositoryImpl(
             .flowOn(Dispatchers.IO)
     }
 }
-

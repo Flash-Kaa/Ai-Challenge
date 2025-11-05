@@ -1,5 +1,7 @@
 package com.flasska.chatai.presentation.chat
 
+import androidx.activity.compose.LocalActivity
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,7 +35,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
@@ -42,9 +47,19 @@ import androidx.navigation.toRoute
 import com.flasska.chatai.domain.model.Message
 import com.flasska.chatai.presentation.design_system.ChatColors
 import com.flasska.chatai.presentation.navigation.Screen
+import com.yandex.div.DivDataTag
+import com.yandex.div.core.Div2Context
+import com.yandex.div.core.DivConfiguration
+import com.yandex.div.core.view2.Div2View
+import com.yandex.div.data.DivParsingEnvironment
+import com.yandex.div.json.ParsingErrorLogger
+import com.yandex.div.picasso.PicassoDivImageLoader
+import com.yandex.div2.DivData
+import org.json.JSONObject
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import java.util.UUID
+import com.yandex.div.R as DivR
 
 fun NavController.navigateToChat(id: String? = null) {
     navigate(Screen.Chat(id))
@@ -123,29 +138,63 @@ fun MessageItem(message: Message) {
             Arrangement.Start
         }
     ) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(
-                    if (message.isFromUser) {
-                        ChatColors.UserMessageBackground
-                    } else {
-                        ChatColors.BotMessageBackground
-                    }
+        if (message.isFromUser) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(ChatColors.UserMessageBackground)
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .widthIn(max = 280.dp)
+            ) {
+                Text(
+                    text = message.text,
+                    color = ChatColors.UserMessageText,
+                    style = MaterialTheme.typography.bodyLarge
                 )
-                .padding(horizontal = 16.dp, vertical = 10.dp)
-                .widthIn(max = 280.dp)
-        ) {
-            Text(
-                text = message.text,
-                color = if (message.isFromUser) {
-                    ChatColors.UserMessageText
-                } else {
-                    ChatColors.BotMessageText
-                },
-                style = MaterialTheme.typography.bodyLarge
+            }
+        } else {
+            DivKitView(message.text.drop(3).dropLast(3))
+        }
+    }
+}
+
+@Composable
+fun DivKitView(divJson: String) {
+    val context = LocalContext.current
+    val activity = LocalActivity.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val divContext = remember(context, lifecycleOwner, activity) {
+        activity?.let {
+            Div2Context(
+                baseContext = activity,
+                configuration = DivConfiguration.Builder(PicassoDivImageLoader(context)).build(),
             )
         }
+    }
+
+    divContext?.let {
+        AndroidView(
+            factory = { Div2View(divContext) },
+            modifier = Modifier.widthIn(max = 280.dp),
+            update = {
+                try {
+                    val divData = JSONObject(divJson).let {
+                        val templates = it.optJSONObject("templates")
+                        val card = it.getJSONObject("card")
+                        val environment = DivParsingEnvironment(ParsingErrorLogger.LOG)
+                        if (templates != null) {
+                            environment.parseTemplates(templates)
+                        }
+                        DivData(environment, card)
+                    }
+                    it.setData(divData, DivDataTag("div2"))
+                } catch (e: Exception) {
+
+                    // Fallback to a simple text view if DivKit parsing fails
+                    // You can also log the error here
+                }
+            }
+        )
     }
 }
 

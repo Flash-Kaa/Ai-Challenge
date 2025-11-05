@@ -1,5 +1,6 @@
 [versions]
 agp = "8.9.3"
+div = "32.24.0"
 kotlin = "2.2.10"
 coreKtx = "1.17.0"
 junit = "4.13.2"
@@ -19,6 +20,11 @@ room = "2.8.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+div-div = { module = "com.yandex.div:div", version.ref = "div" }
+div-json = { module = "com.yandex.div:div-json", version.ref = "div" }
+div-core = { module = "com.yandex.div:div-core", version.ref = "div" }
+div-glide = { module = "com.yandex.div:glide", version.ref = "div" }
+div-picasso = { module = "com.yandex.div:picasso", version.ref = "div" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

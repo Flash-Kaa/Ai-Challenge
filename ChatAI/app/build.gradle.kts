@@ -53,6 +53,12 @@ android {
 }
 
 dependencies {
+    // DivKit
+    implementation(libs.div.div)
+    implementation(libs.div.json)
+    implementation(libs.div.core)
+    implementation(libs.div.picasso)
+    implementation(libs.div.glide)
 
     // Serialization
     implementation(libs.kotlinx.serialization.json)

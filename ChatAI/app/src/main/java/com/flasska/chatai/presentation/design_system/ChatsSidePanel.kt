@@ -266,8 +266,8 @@ private fun ChatPreviewItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = chatPreview.lastMessage?.take(40)?.let {
-                        if (it.length < chatPreview.lastMessage.length) "$it..." else it
+                    text = chatPreview.firstMessage?.take(40)?.let {
+                        if (it.length < chatPreview.firstMessage.length) "$it..." else it
                     } ?: "Новое сообщение",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
