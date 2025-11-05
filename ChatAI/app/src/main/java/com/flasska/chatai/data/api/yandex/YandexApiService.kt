@@ -2,12 +2,13 @@ package com.flasska.chatai.data.api.yandex
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.request.header
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import java.net.UnknownHostException
 
 interface YandexApiService {
     suspend fun sendMessage(
@@ -16,7 +17,7 @@ interface YandexApiService {
         folderId: String,
         model: String?
     ): Result<ApiMessage>
-    
+
     suspend fun getModels(
         apiKey: String,
         folderId: String
@@ -79,7 +80,7 @@ class YandexApiServiceImpl(
                     }
                 }
             }
-        } catch (e: java.net.UnknownHostException) {
+        } catch (_: UnknownHostException) {
             Result.failure(
                 Exception(
                     "Не удалось найти адрес '$baseUrl'. " +
@@ -89,9 +90,9 @@ class YandexApiServiceImpl(
                             "3. Убедитесь, что используете правильный endpoint"
                 )
             )
-        } catch (e: io.ktor.client.network.sockets.ConnectTimeoutException) {
+        } catch (_: io.ktor.client.network.sockets.ConnectTimeoutException) {
             Result.failure(Exception("Не удалось подключиться к серверу. Проверьте интернет-соединение."))
-        } catch (e: io.ktor.client.network.sockets.SocketTimeoutException) {
+        } catch (_: io.ktor.client.network.sockets.SocketTimeoutException) {
             Result.failure(Exception("Превышено время ожидания ответа от сервера."))
         } catch (e: Exception) {
             Result.failure(Exception("Ошибка при отправке запроса: ${e.message}"))
@@ -118,6 +119,7 @@ class YandexApiServiceImpl(
                         Result.failure(Exception("Ошибка десериализации списка моделей: ${e.message}. Тело ответа: $responseBody"))
                     }
                 }
+
                 else -> {
                     try {
                         val errorBody: YandexApiError = httpResponse.body()
@@ -125,13 +127,13 @@ class YandexApiServiceImpl(
                             ?: errorBody.message
                             ?: "Неизвестная ошибка API (${httpResponse.status.value})"
                         Result.failure(Exception(errorMessage))
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         val errorBody = httpResponse.body<String>()
                         Result.failure(Exception("Ошибка API (${httpResponse.status.value}): $errorBody"))
                     }
                 }
             }
-        } catch (e: java.net.UnknownHostException) {
+        } catch (_: UnknownHostException) {
             Result.failure(
                 Exception(
                     "Не удалось найти адрес '$baseUrl'. " +
@@ -150,4 +152,3 @@ class YandexApiServiceImpl(
         }
     }
 }
-

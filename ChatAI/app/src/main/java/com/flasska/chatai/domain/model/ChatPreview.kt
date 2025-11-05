@@ -8,3 +8,4 @@ data class ChatPreview(
     val unreadCount: Int = 0
 )
 
+

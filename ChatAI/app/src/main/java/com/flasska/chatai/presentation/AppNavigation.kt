@@ -33,7 +33,7 @@ fun AppNavigation() {
             null
         }
     }
-    
+
     val currentChatId = currentScreen?.let { screen ->
         when (screen) {
             is Screen.Chat -> screen.id

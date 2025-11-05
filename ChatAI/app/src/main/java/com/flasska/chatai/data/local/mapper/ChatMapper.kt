@@ -38,4 +38,3 @@ fun Message.toEntity(chatId: String): MessageEntity {
         timestamp = timestamp
     )
 }
-

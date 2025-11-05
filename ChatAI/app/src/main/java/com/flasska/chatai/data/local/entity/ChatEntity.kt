@@ -9,4 +9,3 @@ data class ChatEntity(
     val id: String,
     val createdAt: Long = System.currentTimeMillis()
 )
-

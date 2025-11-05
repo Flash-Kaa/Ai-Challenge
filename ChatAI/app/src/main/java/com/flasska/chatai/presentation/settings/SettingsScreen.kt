@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -29,7 +30,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import com.flasska.chatai.data.api.yandex.ModelInfo
 import com.flasska.chatai.data.api.yandex.YandexApiService
 import com.flasska.chatai.data.local.PreferencesManager
 import com.flasska.chatai.presentation.design_system.ChatColors
@@ -79,7 +78,7 @@ fun SettingsScreen(
     var modelExpanded by remember { mutableStateOf(false) }
     var showSuccessMessage by remember { mutableStateOf(false) }
     var showErrorMessage by remember { mutableStateOf<String?>(null) }
-    
+
     // Состояние загрузки моделей
     var availableModels by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var isLoadingModels by remember { mutableStateOf(false) }
@@ -89,7 +88,11 @@ fun SettingsScreen(
     fun getModelDisplayName(modelId: String): String {
         return when {
             modelId.contains("yandexgpt-lite", ignoreCase = true) -> "YandexGPT Lite (быстрая)"
-            modelId.contains("yandexgpt-pro", ignoreCase = true) -> "YandexGPT Pro (профессиональная)"
+            modelId.contains(
+                "yandexgpt-pro",
+                ignoreCase = true
+            ) -> "YandexGPT Pro (профессиональная)"
+
             modelId.contains("yandexgpt", ignoreCase = true) -> "YandexGPT (базовая)"
             else -> modelId
         }
@@ -97,8 +100,9 @@ fun SettingsScreen(
 
     // Загружаем модели при изменении API ключа или folder ID
     LaunchedEffect(apiKey, folderId) {
-        if (apiKey.isNotBlank() && folderId.isNotBlank() && 
-            apiKey != "YOUR_API_KEY_HERE" && folderId != "YOUR_FOLDER_ID_HERE") {
+        if (apiKey.isNotBlank() && folderId.isNotBlank() &&
+            apiKey != "YOUR_API_KEY_HERE" && folderId != "YOUR_FOLDER_ID_HERE"
+        ) {
             isLoadingModels = true
             modelsError = null
             yandexApiService.getModels(apiKey, folderId).fold(
@@ -272,7 +276,9 @@ fun SettingsScreen(
                 )
                 ExposedDropdownMenuBox(
                     expanded = modelExpanded && !isLoadingModels && availableModels.isNotEmpty(),
-                    onExpandedChange = { if (!isLoadingModels && availableModels.isNotEmpty()) modelExpanded = it }
+                    onExpandedChange = {
+                        if (!isLoadingModels && availableModels.isNotEmpty()) modelExpanded = it
+                    }
                 ) {
                     OutlinedTextField(
                         value = when {
@@ -408,4 +414,3 @@ fun SettingsScreen(
         }
     }
 }
-
